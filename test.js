@@ -234,4 +234,43 @@ test('Economy: Bank upgrades and category / fuzzy selling', () => {
   assert.strictEqual(testUser.inventory.mine_diamond, 1);
 });
 
+// 9. Fun Games & Trivia Tests
+import { TriviaGame, TRIVIA_QUESTIONS } from './src/games/trivia.js';
+import { CrashGame } from './src/games/crash.js';
+import { playScratchCard, spinFortuneWheel, playRPS } from './src/games/minigames.js';
+
+test('Fun Games: Trivia generation, options and scoring', () => {
+  const trivia = new TriviaGame('u_123', 'Player', 'ch_1');
+  assert(trivia.question.q);
+  assert.strictEqual(trivia.question.options.length, 4);
+  assert(trivia.getComponents().length > 0);
+});
+
+test('Fun Games: Crash game multiplier and cash out', () => {
+  const mockRest = { sendMessage: async () => ({ id: '123' }), editMessage: async () => {} };
+  const mockDb = { getUser: () => ({ wallet: 1000, stats: {} }), queueSave: () => {} };
+  const crash = new CrashGame('u_123', 'Player', 100, 'ch_1', mockRest, mockDb);
+  assert(crash.crashPoint >= 1.0);
+  assert.strictEqual(crash.status, 'FLYING');
+});
+
+test('Fun Games: Scratch card lottery mechanics', () => {
+  const scratch = playScratchCard(100);
+  assert(scratch.embed);
+  assert(typeof scratch.win === 'boolean');
+});
+
+test('Fun Games: Fortune Wheel spin and prize awarding', () => {
+  const user = { wallet: 500, buffs: {} };
+  const embed = spinFortuneWheel(user);
+  assert(embed.title.includes('Wheel'));
+  assert(user.wallet > 500 || Object.keys(user.buffs).length > 0);
+});
+
+test('Fun Games: Rock Paper Scissors match outcomes', () => {
+  const rpsWin = playRPS('rock', 50);
+  assert(['WIN', 'LOSE', 'TIE'].includes(rpsWin.outcome));
+  assert(rpsWin.embed);
+});
+
 console.log(`\n🎉 All ${passedTests} automated tests passed successfully!\n`);

@@ -42,6 +42,10 @@ export const generalCommands = {
           value: '`!fish` • Catch 15+ fish & ocean relics\n`!mine` • Extract rare gems, crystals & meteors\n`!dig` • Excavate dinosaur fossils & chests\n`!hunt` • Track wildlife, hydras & dragons'
         },
         {
+          name: '🎮 Interactive Fun & Minigames',
+          value: '`!crash` • Live Rocket Crash Game (Cash Out Button!)\n`!trivia` • 4-Choice Button Quiz (Earn Coins!)\n`!scratch` • Scratchcard 6-Square Lottery (up to 20x)\n`!wheel` • Fortune Wheel Spin (Jackpots & Buffs)\n`!rps` • Rock Paper Scissors vs Bot\n`!duel` • PvP Combat Arena Showdown'
+        },
+        {
           name: '💰 Economy & Market',
           value: '`!balance` `!deposit` `!withdraw` `!daily` `!work` `!rob` `!shop` `!buy` `!inventory` `!sell` `!leaderboard` `!profile`'
         },

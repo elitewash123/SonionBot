@@ -93,6 +93,18 @@ node index.js
 
 ---
 
+### 🎮 Interactive Fun & Minigames
+| Command | Usage | Description |
+|---|---|---|
+| `!crash` | `!crash <bet>` | Live Rocket Crash game. Click **Cash Out 💰** button in real-time before the rocket explodes! |
+| `!trivia` / `!quiz` | `!trivia` | 4-Option multiple choice quiz with **Interactive Discord Buttons** (`A`, `B`, `C`, `D`) to earn coins. |
+| `!scratch` / `!lotto` | `!scratch <bet>` | 6-Square scratchcard lottery ticket. Match 3 symbols to win up to **20x**! |
+| `!wheel` / `!spin` | `!wheel` | Spin the Wheel of Fortune (every 2h) for Grand Jackpots, Luck Potions, and Golden Baits. |
+| `!rps` | `!rps <rock\|paper\|scissors> [bet]` | Rock Paper Scissors against the bot with optional coin bets. |
+| `!duel` | `!duel @user <bet>` | High-stakes PvP Combat Arena showdown with **Accept / Decline buttons**! |
+
+---
+
 ### 💰 Economy & Market
 | Command | Usage | Description |
 |---|---|---|
