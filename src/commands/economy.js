@@ -2,7 +2,7 @@
 // Economy, Inventory, Shop & Profile Commands
 // ==========================================================
 
-import { TOOLS, CONSUMABLES, ALL_ITEMS, RARITIES } from '../data/items.js';
+import { TOOLS, CONSUMABLES, BANK_UPGRADES, ALL_ITEMS, RARITIES } from '../data/items.js';
 import { JOBS } from '../data/jobs.js';
 import { createEmbed, errorEmbed, successEmbed, COLORS, formatNumber, formatTime, createProgressBar } from '../discord/embeds.js';
 import { getRequiredXp } from '../games/gathering.js';
@@ -13,7 +13,7 @@ export const economyCommands = {
   balance: {
     name: 'balance',
     aliases: ['bal', 'wallet'],
-    description: 'Shows your current wallet balance and bank account.',
+    description: 'Shows your current wallet balance, bank account, and capacity.',
     usage: '!balance [@user]',
     async execute({ rest, message, args, db }) {
       const targetId = parseUserId(args[0]) || message.author.id;
@@ -29,7 +29,8 @@ export const economyCommands = {
             { name: '🪙 Wallet', value: `**${formatNumber(user.wallet)}** coins`, inline: true },
             { name: '🏦 Bank', value: `**${formatNumber(user.bank)}** / ${formatNumber(user.bank_capacity)} coins`, inline: true },
             { name: '💎 Net Worth', value: `**${formatNumber(netWorth)}** coins`, inline: true }
-          ]
+          ],
+          footer: 'Use !deposit and !withdraw to manage your funds safely!'
         })
       });
     }
@@ -72,7 +73,7 @@ export const economyCommands = {
 
       if (user.bank + amount > user.bank_capacity) {
         return rest.sendMessage(message.channel_id, {
-          embeds: errorEmbed('Bank Full', `Your bank can only hold up to 🪙 **${formatNumber(user.bank_capacity)}** coins! (Current: ${formatNumber(user.bank)})`)
+          embeds: errorEmbed('Bank Full', `Your bank can only hold up to 🪙 **${formatNumber(user.bank_capacity)}** coins! (Current: ${formatNumber(user.bank)}).\n\n💡 Upgrade your bank capacity in the shop with \`!shop bank\`!`)
         });
       }
 
@@ -81,7 +82,7 @@ export const economyCommands = {
       db.queueSave();
 
       return rest.sendMessage(message.channel_id, {
-        embeds: successEmbed('Deposit Successful', `Deposited 🪙 **${formatNumber(amount)}** coins into your bank.\n\n**Wallet:** ${formatNumber(user.wallet)} | **Bank:** ${formatNumber(user.bank)}`)
+        embeds: successEmbed('Deposit Successful', `Deposited 🪙 **${formatNumber(amount)}** coins into your bank.\n\n**Wallet:** ${formatNumber(user.wallet)} | **Bank:** ${formatNumber(user.bank)} / ${formatNumber(user.bank_capacity)}`)
       });
     }
   },
@@ -149,7 +150,6 @@ export const economyCommands = {
         });
       }
 
-      // Check streak (resets if elapsed > 48 hours)
       if (elapsed < oneDayMs * 2) {
         user.stats.daily_streak = (user.stats.daily_streak || 0) + 1;
       } else {
@@ -186,7 +186,7 @@ export const economyCommands = {
     async execute({ rest, message, db }) {
       const user = db.getUser(message.author.id);
       const now = Date.now();
-      const cooldownMs = 60 * 1000; // 1 minute cooldown
+      const cooldownMs = 60 * 1000;
       const lastWork = user.cooldowns.work || 0;
       const elapsed = now - lastWork;
 
@@ -234,9 +234,8 @@ export const economyCommands = {
       const robber = db.getUser(message.author.id);
       const victim = db.getUser(targetId);
 
-      // Check cooldown
       const now = Date.now();
-      const cooldownMs = 5 * 60 * 1000; // 5 minutes
+      const cooldownMs = 5 * 60 * 1000;
       const lastRob = robber.cooldowns.rob || 0;
       const elapsed = now - lastRob;
 
@@ -261,11 +260,10 @@ export const economyCommands = {
 
       robber.cooldowns.rob = now;
 
-      // 45% success chance
       const success = Math.random() < 0.45;
 
       if (success) {
-        const stealPercentage = 0.15 + Math.random() * 0.35; // Steal 15% - 50%
+        const stealPercentage = 0.15 + Math.random() * 0.35;
         const stolenAmount = Math.floor(victim.wallet * stealPercentage);
 
         victim.wallet -= stolenAmount;
@@ -298,12 +296,13 @@ export const economyCommands = {
   // --- SHOP ---
   shop: {
     name: 'shop',
-    description: 'Browse upgradeable gathering tools and consumable power-ups.',
-    usage: '!shop [tools|consumables]',
+    description: 'Browse upgradeable tools, bank vaults, and consumables.',
+    usage: '!shop [tools|bank|consumables]',
     async execute({ rest, message, args }) {
       const category = (args[0] || 'all').toLowerCase();
 
       const toolEntries = Object.values(TOOLS).filter(t => t.cost > 0);
+      const bankEntries = Object.values(BANK_UPGRADES);
       const consumableEntries = Object.values(CONSUMABLES);
 
       const fields = [];
@@ -320,7 +319,19 @@ export const economyCommands = {
         });
       }
 
-      if (category === 'all' || category === 'consumables') {
+      if (category === 'all' || category === 'bank' || category === 'vault') {
+        const vaultList = bankEntries.map(v => {
+          return `• **${v.name}** (\`${v.id}\`) — 🪙 **${formatNumber(v.price)}**\n  *${v.desc}*`;
+        }).join('\n\n');
+
+        fields.push({
+          name: '🏦 Bank Vault Expansions',
+          value: vaultList || 'No vaults available.',
+          inline: false
+        });
+      }
+
+      if (category === 'all' || category === 'consumables' || category === 'buffs') {
         const buffList = consumableEntries.map(c => {
           return `• **${c.name}** (\`${c.id}\`) — 🪙 **${formatNumber(c.price)}**\n  *${c.desc}*`;
         }).join('\n\n');
@@ -335,10 +346,10 @@ export const economyCommands = {
       return rest.sendMessage(message.channel_id, {
         embeds: createEmbed({
           title: '🛒 Adventurer\'s Market & Outfitter',
-          description: 'Upgrade your gear to hook mythical fish, drill ancient void gems, and double your yields!\nBuy items using `!buy <item_id>`',
+          description: 'Upgrade your tools, increase your bank capacity, and buy lucky potions!\nBuy items using `!buy <item_id>`',
           color: COLORS.INFO,
           fields,
-          footer: 'Example: !buy rod_fiber or !buy lucky_clover'
+          footer: 'Example: !buy rod_fiber or !buy vault_bronze or !buy lucky_clover'
         })
       });
     }
@@ -347,7 +358,7 @@ export const economyCommands = {
   // --- BUY ---
   buy: {
     name: 'buy',
-    description: 'Purchase tools or consumables from the shop.',
+    description: 'Purchase tools, bank expansions, or consumables from the shop.',
     usage: '!buy <item_id> [amount]',
     async execute({ rest, message, args, db }) {
       const user = db.getUser(message.author.id);
@@ -361,9 +372,10 @@ export const economyCommands = {
       }
 
       const tool = TOOLS[itemId];
+      const vault = BANK_UPGRADES[itemId];
       const consumable = CONSUMABLES[itemId];
 
-      if (!tool && !consumable) {
+      if (!tool && !vault && !consumable) {
         return rest.sendMessage(message.channel_id, {
           embeds: errorEmbed('Item Not Found', `No item found matching \`${itemId}\`. View available items with \`!shop\`.`)
         });
@@ -391,6 +403,26 @@ export const economyCommands = {
           embeds: successEmbed(
             'Tool Upgraded!',
             `🎉 You purchased and equipped **${tool.name}** (Tier ${tool.tier}) for 🪙 **${formatNumber(tool.cost)}** coins!\n\nYour gathering yields and rare drop rates have significantly increased!`
+          )
+        });
+      }
+
+      // Buying a Bank Vault Upgrade
+      if (vault) {
+        if (user.wallet < vault.price) {
+          return rest.sendMessage(message.channel_id, {
+            embeds: errorEmbed('Insufficient Funds', `You need 🪙 **${formatNumber(vault.price)}** coins to buy **${vault.name}**. (You have: ${formatNumber(user.wallet)})`)
+          });
+        }
+
+        user.wallet -= vault.price;
+        user.bank_capacity = (user.bank_capacity || 5000) + vault.capacityAdd;
+        db.queueSave();
+
+        return rest.sendMessage(message.channel_id, {
+          embeds: successEmbed(
+            'Bank Capacity Expanded!',
+            `🏦 You purchased **${vault.name}** for 🪙 **${formatNumber(vault.price)}** coins!\n\n**New Max Bank Capacity:** 🪙 **${formatNumber(user.bank_capacity)}** coins`
           )
         });
       }
@@ -460,7 +492,7 @@ export const economyCommands = {
           color: COLORS.INFO,
           fields: [
             { name: '💎 Total Sell Value', value: `🪙 **${formatNumber(totalValue)}** coins`, inline: true },
-            { name: '💡 Sell Commands', value: '`!sell all` or `!sell <item_id>`', inline: true }
+            { name: '💡 Sell Commands', value: '`!sell all`, `!sell fish`, `!sell ores`, `!sell <item_name>`', inline: true }
           ]
         })
       });
@@ -470,37 +502,69 @@ export const economyCommands = {
   // --- SELL ---
   sell: {
     name: 'sell',
-    description: 'Sell gathered loot, catches, and ores from your inventory.',
-    usage: '!sell <item_id|all> [amount]',
+    description: 'Sell gathered loot, catches, ores, relics, or entire categories for coins.',
+    usage: '!sell <item_id|item_name|category|all> [amount]',
     async execute({ rest, message, args, db }) {
       const user = db.getUser(message.author.id);
-      const choice = (args[0] || '').toLowerCase();
+      const query = (args[0] || '').toLowerCase();
 
-      if (!choice) {
+      if (!query) {
         return rest.sendMessage(message.channel_id, {
-          embeds: errorEmbed('Missing Argument', 'Specify an item ID or `all`: `!sell all` or `!sell fish_minnow 5`')
+          embeds: errorEmbed(
+            'Missing Argument',
+            'Specify what you want to sell:\n' +
+            '• `!sell all` — Sell everything in your inventory\n' +
+            '• `!sell fish` — Sell all caught marine life\n' +
+            '• `!sell ores` / `!sell mine` — Sell all mined gems and ores\n' +
+            '• `!sell dig` / `!sell relics` — Sell all excavated fossils and relics\n' +
+            '• `!sell hunt` / `!sell beasts` — Sell all hunted creatures\n' +
+            '• `!sell <item_name> [amount]` — e.g. `!sell minnow 5` or `!sell diamond`'
+          )
         });
       }
 
-      // Sell All
-      if (choice === 'all') {
+      // Check Category Sells: "all", "fish", "mine/ores", "dig/relics/fossils", "hunt/beasts"
+      const categoryMap = {
+        'all': null,
+        'fish': 'fish_',
+        'fishing': 'fish_',
+        'mine': 'mine_',
+        'ores': 'mine_',
+        'ore': 'mine_',
+        'mining': 'mine_',
+        'dig': 'dig_',
+        'digging': 'dig_',
+        'relics': 'dig_',
+        'fossils': 'dig_',
+        'hunt': 'hunt_',
+        'hunting': 'hunt_',
+        'beasts': 'hunt_',
+        'animals': 'hunt_',
+        'meat': 'hunt_'
+      };
+
+      if (query in categoryMap) {
+        const prefixFilter = categoryMap[query];
         let totalCoins = 0;
         let totalCount = 0;
+        const soldBreakdown = [];
 
         for (const [id, count] of Object.entries(user.inventory || {})) {
-          if (count > 0) {
+          if (count > 0 && (!prefixFilter || id.startsWith(prefixFilter))) {
             const item = ALL_ITEMS[id];
             if (item) {
-              totalCoins += item.value * count;
+              const itemTotal = item.value * count;
+              totalCoins += itemTotal;
               totalCount += count;
               user.inventory[id] = 0;
+              soldBreakdown.push(`${item.emoji} ${count}x ${item.name} (+🪙 ${formatNumber(itemTotal)})`);
             }
           }
         }
 
         if (totalCount === 0) {
           return rest.sendMessage(message.channel_id, {
-            embeds: errorEmbed('Nothing to Sell', 'Your inventory contains no sellable items!')
+            embeds: errorEmbed('Nothing to Sell', `You have no ${query === 'all' ? 'items' : query} to sell in your inventory!`)
           });
         }
 
@@ -508,26 +572,40 @@ export const economyCommands = {
         user.stats.total_earned = (user.stats.total_earned || 0) + totalCoins;
         db.queueSave();
 
+        const previewList = soldBreakdown.slice(0, 8).join('\n') + (soldBreakdown.length > 8 ? `\n*...and ${soldBreakdown.length - 8} more items*` : '');
+
         return rest.sendMessage(message.channel_id, {
           embeds: successEmbed(
-            'Inventory Liquidated',
-            `💰 Sold **${totalCount} items** for a total of 🪙 **${formatNumber(totalCoins)}** coins!\n\n**New Wallet Balance:** ${formatNumber(user.wallet)} coins`
+            `Sold ${query === 'all' ? 'All Items' : query.toUpperCase()}`,
+            `💰 Successfully liquidated **${totalCount} items** for a total of 🪙 **${formatNumber(totalCoins)}** coins!\n\n` +
+            `**Receipt:**\n${previewList}\n\n` +
+            `🪙 **New Wallet Balance:** **${formatNumber(user.wallet)}** coins`
           )
         });
       }
 
-      // Sell Specific Item
-      const item = ALL_ITEMS[choice];
-      if (!item) {
+      // Find Specific Item (Exact ID or Case-Insensitive Name Search)
+      let targetItem = ALL_ITEMS[query];
+      if (!targetItem) {
+        // Match by partial name in ALL_ITEMS
+        targetItem = Object.values(ALL_ITEMS).find(i => 
+          i.id.toLowerCase() === query ||
+          i.name.toLowerCase() === query ||
+          i.name.toLowerCase().replace(/[^a-z0-9]/g, '').includes(query.replace(/[^a-z0-9]/g, '')) ||
+          i.id.replace(/^(fish|mine|dig|hunt)_/, '').toLowerCase() === query
+        );
+      }
+
+      if (!targetItem) {
         return rest.sendMessage(message.channel_id, {
-          embeds: errorEmbed('Item Not Found', `No sellable item found matching \`${choice}\`.`)
+          embeds: errorEmbed('Item Not Found', `No gathering item found matching \`${query}\`. Check your inventory with \`!inv\`.`)
         });
       }
 
-      const available = user.inventory[item.id] || 0;
+      const available = user.inventory[targetItem.id] || 0;
       if (available <= 0) {
         return rest.sendMessage(message.channel_id, {
-          embeds: errorEmbed('Item Not In Inventory', `You do not have any **${item.name}** in your inventory.`)
+          embeds: errorEmbed('Item Not In Inventory', `You do not have any **${targetItem.name}** in your inventory.`)
         });
       }
 
@@ -536,8 +614,8 @@ export const economyCommands = {
         sellCount = available;
       }
 
-      const earned = item.value * sellCount;
-      user.inventory[item.id] -= sellCount;
+      const earned = targetItem.value * sellCount;
+      user.inventory[targetItem.id] -= sellCount;
       user.wallet += earned;
       user.stats.total_earned = (user.stats.total_earned || 0) + earned;
       db.queueSave();
@@ -545,7 +623,7 @@ export const economyCommands = {
       return rest.sendMessage(message.channel_id, {
         embeds: successEmbed(
           'Items Sold',
-          `💰 Sold **${sellCount}x ${item.name}** for 🪙 **${formatNumber(earned)}** coins!\n\n**Wallet:** ${formatNumber(user.wallet)} coins`
+          `💰 Sold **${sellCount}x ${targetItem.name}** ${targetItem.emoji} for 🪙 **${formatNumber(earned)}** coins!\n\n**Wallet:** ${formatNumber(user.wallet)} coins`
         )
       });
     }

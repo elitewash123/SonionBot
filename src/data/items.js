@@ -41,6 +41,14 @@ export const TOOLS = {
   hunt_laser: { id: 'hunt_laser', name: 'Plasma Arc Cannon', type: 'weapon', tier: 5, cost: 40000, power: 4.0, luck: 0.70, desc: 'Vaporizes mythical beasts and locks onto targets.' }
 };
 
+export const BANK_UPGRADES = {
+  vault_bronze: { id: 'vault_bronze', name: 'Bronze Vault Box', price: 2500, capacityAdd: 10000, desc: 'Expands bank max capacity by +10,000 coins.' },
+  vault_silver: { id: 'vault_silver', name: 'Silver Bank Vault', price: 10000, capacityAdd: 50000, desc: 'Expands bank max capacity by +50,000 coins.' },
+  vault_gold: { id: 'vault_gold', name: 'Gold Reinforced Vault', price: 40000, capacityAdd: 250000, desc: 'Expands bank max capacity by +250,000 coins.' },
+  vault_platinum: { id: 'vault_platinum', name: 'Platinum Fortress Vault', price: 150000, capacityAdd: 1000000, desc: 'Expands bank max capacity by +1,000,000 coins.' },
+  vault_infinite: { id: 'vault_infinite', name: 'Dimensional Quantum Vault', price: 500000, capacityAdd: 10000000, desc: 'Expands bank max capacity by +10,000,000 coins.' }
+};
+
 export const CONSUMABLES = {
   lucky_clover: { id: 'lucky_clover', name: 'Four-Leaf Clover', price: 150, type: 'buff', duration: 10, bonusLuck: 0.25, desc: '+25% Luck for 10 gathering actions.' },
   energy_drink: { id: 'energy_drink', name: 'Energy Elixir', price: 200, type: 'buff', duration: 15, cooldownReduction: 0.40, desc: 'Reduces gathering cooldowns by 40% for 15 uses.' },

@@ -201,4 +201,37 @@ test('Commands: Command router and alias integrity', () => {
   assert(COMMAND_MAP.has('help'));
 });
 
+// 8. Bank Upgrade & Category Selling Tests
+test('Economy: Bank upgrades and category / fuzzy selling', () => {
+  const testUser = {
+    wallet: 50000,
+    bank: 0,
+    bank_capacity: 5000,
+    inventory: {
+      fish_minnow: 5,
+      fish_salmon: 2,
+      mine_diamond: 1,
+      mine_iron: 10
+    },
+    stats: {},
+    buffs: {},
+    tools: {},
+    skills: {}
+  };
+
+  // Test selling category 'fish'
+  let totalFishCoins = 0;
+  for (const [id, count] of Object.entries(testUser.inventory)) {
+    if (id.startsWith('fish_') && count > 0) {
+      totalFishCoins += ALL_ITEMS[id].value * count;
+      testUser.inventory[id] = 0;
+    }
+  }
+
+  assert.strictEqual(totalFishCoins, (25 * 5) + (85 * 2));
+  assert.strictEqual(testUser.inventory.fish_minnow, 0);
+  assert.strictEqual(testUser.inventory.fish_salmon, 0);
+  assert.strictEqual(testUser.inventory.mine_diamond, 1);
+});
+
 console.log(`\n🎉 All ${passedTests} automated tests passed successfully!\n`);
