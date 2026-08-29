@@ -1,0 +1,22 @@
+{
+  "name": "sonion-bot",
+  "version": "1.0.0",
+  "description": "Zero-dependency Discord Bot featuring Moderation, RPG Gathering, Casino & Economy systems.",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "test": "node test.js"
+  },
+  "keywords": [
+    "discord-bot",
+    "zero-dependencies",
+    "moderation",
+    "rpg",
+    "casino",
+    "economy"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {}
+}
