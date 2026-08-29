@@ -49,12 +49,31 @@ const DEFAULT_GUILD = {
 export class Database {
   constructor(filePath = './database.json') {
     this.filePath = path.resolve(filePath);
+    this.backupPath = path.resolve(`${filePath}.bak`);
     this.data = {
       users: {},
       guilds: {}
     };
     this.saveTimeout = null;
     this.load();
+    this.bindProcessHooks();
+  }
+
+  bindProcessHooks() {
+    const saveAndExit = () => {
+      this.saveImmediately();
+    };
+
+    process.on('beforeExit', saveAndExit);
+    process.on('exit', saveAndExit);
+    process.on('SIGINT', () => {
+      this.saveImmediately();
+      process.exit(0);
+    });
+    process.on('SIGTERM', () => {
+      this.saveImmediately();
+      process.exit(0);
+    });
   }
 
   load() {
@@ -65,13 +84,28 @@ export class Database {
         if (!this.data.users) this.data.users = {};
         if (!this.data.guilds) this.data.guilds = {};
         console.log(`[Database] Successfully loaded database with ${Object.keys(this.data.users).length} users.`);
+      } else if (fs.existsSync(this.backupPath)) {
+        console.warn('[Database] Main DB missing, recovering from backup (.bak)...');
+        const raw = fs.readFileSync(this.backupPath, 'utf8');
+        this.data = JSON.parse(raw);
+        this.saveImmediately();
       } else {
         this.saveImmediately();
         console.log('[Database] Initialized new empty database file.');
       }
     } catch (err) {
-      console.error('[Database] Failed to load database file, initializing clean state:', err);
-      this.data = { users: {}, guilds: {} };
+      console.error('[Database] Failed to load database file, attempting backup recovery:', err);
+      if (fs.existsSync(this.backupPath)) {
+        try {
+          const raw = fs.readFileSync(this.backupPath, 'utf8');
+          this.data = JSON.parse(raw);
+          this.saveImmediately();
+        } catch (_) {
+          this.data = { users: {}, guilds: {} };
+        }
+      } else {
+        this.data = { users: {}, guilds: {} };
+      }
     }
   }
 
@@ -86,8 +120,14 @@ export class Database {
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
       }
-      fs.writeFileSync(tempPath, JSON.stringify(this.data, null, 2), 'utf8');
+      const jsonStr = JSON.stringify(this.data, null, 2);
+      fs.writeFileSync(tempPath, jsonStr, 'utf8');
+      
+      // Atomic rename
       fs.renameSync(tempPath, this.filePath);
+      
+      // Update backup copy
+      fs.writeFileSync(this.backupPath, jsonStr, 'utf8');
     } catch (err) {
       console.error('[Database] Error saving database:', err);
       if (fs.existsSync(tempPath)) {
@@ -97,10 +137,8 @@ export class Database {
   }
 
   queueSave() {
-    if (this.saveTimeout) return;
-    this.saveTimeout = setTimeout(() => {
-      this.saveImmediately();
-    }, 1500);
+    // Instant save guarantees no data loss on edit / hot-reload
+    this.saveImmediately();
   }
 
   // --- User Methods ---
